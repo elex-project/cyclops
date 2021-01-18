@@ -7,10 +7,7 @@
 
 package com.elex_project.cyclops;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 
 import static com.elex_project.cyclops.Utils.*;
 
@@ -27,13 +24,9 @@ import static com.elex_project.cyclops.Utils.*;
 @Getter
 @Setter
 @EqualsAndHashCode
-@ToString
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class RGB implements Color {
 	private int color;
-
-	private RGB(int color) {
-		this.color = color;
-	}
 
 	public static RGB of(int a, int r, int g, int b) {
 		return new RGB(argb(a, r, g, b));
@@ -53,6 +46,11 @@ public class RGB implements Color {
 
 	public String toHexString() {
 		return Integer.toHexString(color);
+	}
+
+	@Override
+	public String toString() {
+		return "RGB(r=" + red() + ", g=" + green() + ", blue=" + blue() + ")";
 	}
 
 	public int alpha() {
@@ -96,26 +94,7 @@ public class RGB implements Color {
 
 	@Override
 	public CMYK toCMYK() {
-		// The R,G,B values are divided by 255 to change the range from 0..255 to 0..1:
-		float r = red() / 255f;
-		float g = green() / 255f;
-		float b = blue() / 255f;
-		//The black key (K) color is calculated from the red (R'), green (G') and blue (B') colors:
-		float k = 1 - Utils.max(r, g, b);
-		//
-		float c, m, y;
-		if (k == 1) {
-			c = m = y = 0;
-		} else {
-			// The cyan color (C) is calculated from the red (R') and black (K) colors:
-			c = (1 - r - k) / (1 - k);
-			//The magenta color (M) is calculated from the green (G') and black (K) colors:
-			m = (1 - g - k) / (1 - k);
-			//The yellow color (Y) is calculated from the blue (B') and black (K) colors:
-			y = (1 - b - k) / (1 - k);
-		}
-
-		return CMYK.of(c, m, y, k);
+		return toCMY().toCMYK();
 	}
 
 	/**
@@ -130,83 +109,83 @@ public class RGB implements Color {
 	 */
 	@Override
 	public HSL toHSL() {
-		final float rf = red() / 255f;
-		final float gf = green() / 255f;
-		final float bf = blue() / 255f;
 
-		final float max = Utils.max(rf, gf, bf);
-		final float min = Utils.min(rf, gf, bf);
-		final float deltaMaxMin = max - min;
+		float var_R = (red() / 255f);                     //RGB from 0 to 255
+		float var_G = (green() / 255f);
+		float var_B = (blue() / 255f);
 
-		float h, s;
-		float l = (max + min) / 2f;
+		float var_Min = min(var_R, var_G, var_B);    //Min. value of RGB
+		float var_Max = max(var_R, var_G, var_B);    //Max. value of RGB
+		float del_Max = var_Max - var_Min;            //Delta RGB value
 
-		if (max == min) {
-			// Monochromatic
-			h = s = 0f;
-		} else {
-			if (max == rf) {
-				h = ((gf - bf) / deltaMaxMin) % 6f;
-			} else if (max == gf) {
-				h = ((bf - rf) / deltaMaxMin) + 2f;
+		float L = (var_Max + var_Min) / 2f;
+
+		float H = 0, S = 0;
+		if (del_Max == 0) {                    //This is a gray, no chroma...
+			H = 0;                                //HSL results from 0 to 1
+			S = 0;
+		} else {                                   //Chromatic data...
+			if (L < 0.5) {
+				S = del_Max / (var_Max + var_Min);
 			} else {
-				h = ((rf - gf) / deltaMaxMin) + 4f;
+				S = del_Max / (2 - var_Max - var_Min);
 			}
 
-			s = deltaMaxMin / (1f - Math.abs(2f * l - 1f));
-		}
+			float del_R = (((var_Max - var_R) / 6f) + (del_Max / 2f)) / del_Max;
+			float del_G = (((var_Max - var_G) / 6f) + (del_Max / 2f)) / del_Max;
+			float del_B = (((var_Max - var_B) / 6f) + (del_Max / 2f)) / del_Max;
 
-		h = (h * 60f) % 360f;
-		if (h < 0) {
-			h += 360f;
-		}
+			if (var_R == var_Max) {
+				H = del_B - del_G;
+			} else if (var_G == var_Max) {
+				H = (1 / 3f) + del_R - del_B;
+			} else if (var_B == var_Max) {
+				H = (2 / 3f) + del_G - del_R;
+			}
 
-		return HSL.of(
-				Utils.constrain(h, 0f, 360f),
-				Utils.constrain(s, 0f, 1f),
-				Utils.constrain(l, 0f, 1f));
+			if (H < 0) H += 1;
+			if (H > 1) H -= 1;
+		}
+		return HSL.of(H, S, L);
 	}
 
 	@Override
 	public HSV toHSV() {
-		// The R,G,B values are divided by 255 to change the range from 0..255 to 0..1:
-		float r = red() / 255f;
-		float g = green() / 255f;
-		float b = blue() / 255f;
 
-		float cMax = Utils.max(r, g, b);
-		float cMin = Utils.min(r, g, b);
-		float delta = cMax - cMin;
+		float var_R = (red() / 255f);                 //RGB from 0 to 255
+		float var_G = (green() / 255f);
+		float var_B = (blue() / 255f);
 
-		float h, s, v;
-		if (delta == 0) {
-			h = 0;
-		} else {
-			//Hue calculation:
-			if (cMax == r) {
-				h = 60 * (((g - b) / delta) % 6);
-			} else if (cMax == g) {
-				h = 60 * (((b - r) / delta) + 2);
-			} else {
-				h = 60 * (((r - g) / delta) + 4);
+		float var_Min = min(var_R, var_G, var_B);   //Min. value of RGB
+		float var_Max = max(var_R, var_G, var_B);    //Max. value of RGB
+		float del_Max = var_Max - var_Min;          //Delta RGB value
+
+		float V = var_Max;
+		float H = 0, S = 0;
+		if (del_Max == 0) {                     //This is a gray, no chroma...
+			H = 0;                                //HSV results from 0 to 1
+			S = 0;
+		} else {                                  //Chromatic data...
+			S = del_Max / var_Max;
+
+			float del_R = (((var_Max - var_R) / 6) + (del_Max / 2)) / del_Max;
+			float del_G = (((var_Max - var_G) / 6) + (del_Max / 2)) / del_Max;
+			float del_B = (((var_Max - var_B) / 6) + (del_Max / 2)) / del_Max;
+
+			if (var_R == var_Max) {
+				H = del_B - del_G;
+			} else if (var_G == var_Max) {
+				H = (1 / 3f) + del_R - del_B;
+			} else if (var_B == var_Max) {
+				H = (2 / 3f) + del_G - del_R;
 			}
-		}
-		//
-		if (h < 0) {
-			h += 360;
-		} else if (h > 359) {
-			h -= 360;
-		}
-		//Saturation calculation:
-		if (cMax == 0) {
-			s = 0;
-		} else {
-			s = delta / cMax;
-		}
-		//Value calculation:
-		v = cMax;
 
-		return HSV.of(h, s, v);
+			if (H < 0) H += 1;
+			if (H > 1) H -= 1;
+		}
+		// H를 360으로	// 0~360, 0~1, 0~1
+		//H *=360;
+		return HSV.of(H, S, V);
 	}
 
 	/**
@@ -237,17 +216,64 @@ public class RGB implements Color {
 	 */
 	@Override
 	public XYZ toXYZ() {
-		double sr = red() / 255.0;
-		sr = sr < 0.04045 ? sr / 12.92 : Math.pow((sr + 0.055) / 1.055, 2.4);
-		double sg = green() / 255.0;
-		sg = sg < 0.04045 ? sg / 12.92 : Math.pow((sg + 0.055) / 1.055, 2.4);
-		double sb = blue() / 255.0;
-		sb = sb < 0.04045 ? sb / 12.92 : Math.pow((sb + 0.055) / 1.055, 2.4);
+		float var_R = (red() / 255f);        //R from 0 to 255
+		float var_G = (green() / 255f);        //G from 0 to 255
+		float var_B = (blue() / 255f);        //B from 0 to 255
 
-		return XYZ.of(
-				100 * (sr * 0.4124 + sg * 0.3576 + sb * 0.1805),
-				100 * (sr * 0.2126 + sg * 0.7152 + sb * 0.0722),
-				100 * (sr * 0.0193 + sg * 0.1192 + sb * 0.9505)
-		);
+		if (var_R > 0.04045)
+			var_R = (float) Math.pow((var_R + 0.055) / 1.055, 2.4);
+		else
+			var_R = var_R / 12.92f;
+		if (var_G > 0.04045)
+			var_G = (float) Math.pow((var_G + 0.055) / 1.055, 2.4);
+		else
+			var_G = var_G / 12.92f;
+		if (var_B > 0.04045)
+			var_B = (float) Math.pow((var_B + 0.055) / 1.055, 2.4);
+		else
+			var_B = var_B / 12.92f;
+
+		var_R = var_R * 100;
+		var_G = var_G * 100;
+		var_B = var_B * 100;
+
+		//Observer. = 2°, Illuminant = D65
+		float X = (float) (var_R * 0.4124 + var_G * 0.3576 + var_B * 0.1805);
+		float Y = (float) (var_R * 0.2126 + var_G * 0.7152 + var_B * 0.0722);
+		float Z = (float) (var_R * 0.0193 + var_G * 0.1192 + var_B * 0.9505);
+
+		return XYZ.of(X, Y, Z);
+	}
+
+	@Override
+	public CMY toCMY() {
+		float R = red();
+		float G = green();
+		float B = blue();
+
+		float C = 1 - (R / 255);
+		float M = 1 - (G / 255);
+		float Y = 1 - (B / 255);
+		return CMY.of(C, M, Y);
+	}
+
+	@Override
+	public HunterLAB toHunterLAB() {
+		return toXYZ().toHunterLAB();
+	}
+
+	@Override
+	public LCH toLCH() {
+		return toLAB().toLCH();
+	}
+
+	@Override
+	public LUV toLUV() {
+		return toXYZ().toLUV();
+	}
+
+	@Override
+	public YXY toYXY() {
+		return toXYZ().toYXY();
 	}
 }

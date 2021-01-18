@@ -14,16 +14,16 @@ import lombok.*;
 @EqualsAndHashCode
 @ToString
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class CMYK implements Color {
-	private float cyan, magenta, yellow, black;
+public class YXY implements Color {
+	private float Y, x, y;
 
-	public static CMYK of(float cyan, float magenta, float yellow, float black) {
-		return new CMYK(cyan, magenta, yellow, black);
+	public static YXY of(float Y, float x, float y) {
+		return new YXY(Y, x, y);
 	}
 
 	@Override
 	public CMYK toCMYK() {
-		return new CMYK(cyan, magenta, yellow, black);
+		return toCMY().toCMYK();
 	}
 
 	@Override
@@ -43,22 +43,25 @@ public class CMYK implements Color {
 
 	@Override
 	public RGB toRGB() {
-		return toCMY().toRGB();
+		return toXYZ().toRGB();
 	}
 
 	@Override
 	public XYZ toXYZ() {
-		return toRGB().toXYZ();
+		//Y from 0 to 100
+		//x from 0 to 1
+		//y from 0 to 1
+
+		float X = x * (Y / y);
+		//Y = Y;
+		float Z = (1 - x - y) * (Y / y);
+
+		return XYZ.of(X, Y, Z);
 	}
 
 	@Override
 	public CMY toCMY() {
-		//CMYK and CMY values from 0 to 1
-
-		float C = (cyan * (1 - black) + black);
-		float M = (magenta * (1 - black) + black);
-		float Y = (yellow * (1 - black) + black);
-		return CMY.of(C, M, Y);
+		return toRGB().toCMY();
 	}
 
 	@Override
@@ -78,6 +81,6 @@ public class CMYK implements Color {
 
 	@Override
 	public YXY toYXY() {
-		return toRGB().toYXY();
+		return new YXY(Y, x, y);
 	}
 }

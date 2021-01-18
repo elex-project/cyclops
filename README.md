@@ -1,6 +1,10 @@
-# tmpl-java-library
+# Project Cyclops
 
-Template for Java library project
+
+
+Conversion between color spaces
+
+
 
 ---
 developed by Elex

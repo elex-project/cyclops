@@ -7,31 +7,23 @@
 
 package com.elex_project.cyclops;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 
 @Getter
 @Setter
 @EqualsAndHashCode
 @ToString
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LAB implements Color {
-	private double lightness, a, b;
+	private float L, a, b;
 
 	/**
-	 * @param lightness L component value [0...100)
-	 * @param a         A component value [-128...127)
-	 * @param b         B component value [-128...127)
+	 * @param L L component value [0...100)
+	 * @param a A component value [-128...127)
+	 * @param b B component value [-128...127)
 	 */
-	private LAB(double lightness, double a, double b) {
-		this.lightness = lightness;
-		this.a = a;
-		this.b = b;
-	}
-
-	public static LAB of(double lightness, double a, double b) {
-		return new LAB(lightness, a, b);
+	public static LAB of(float L, float a, float b) {
+		return new LAB(L, a, b);
 	}
 
 	/**
@@ -42,32 +34,32 @@ public class LAB implements Color {
 	 *
 	 * @param ratio the blend ratio of {@code lab1} to {@code lab2}
 	 */
-	public void blend(LAB color, double ratio) {
+	public void blend(LAB color, float ratio) {
 
-		final double inverseRatio = 1 - ratio;
-		lightness = this.lightness * inverseRatio + color.lightness * ratio;
+		final float inverseRatio = 1 - ratio;
+		L = this.L * inverseRatio + color.L * ratio;
 		a = this.a * inverseRatio + color.a * ratio;
 		b = this.b * inverseRatio + color.b * ratio;
 	}
 
 	@Override
 	public CMYK toCMYK() {
-		return toRGB().toCMYK();
+		return toXYZ().toCMYK();
 	}
 
 	@Override
 	public HSL toHSL() {
-		return toRGB().toHSL();
+		return toXYZ().toHSL();
 	}
 
 	@Override
 	public HSV toHSV() {
-		return toRGB().toHSV();
+		return toXYZ().toHSV();
 	}
 
 	@Override
 	public LAB toLAB() {
-		return new LAB(lightness, a, b);
+		return new LAB(L, a, b);
 	}
 
 	@Override
@@ -89,21 +81,75 @@ public class LAB implements Color {
 	 */
 	@Override
 	public XYZ toXYZ() {
-		final double fy = (lightness + 16) / 116;
-		final double fx = a / 500 + fy;
-		final double fz = fy - b / 200;
+		float var_Y = (L + 16) / 116f;
+		float var_X = a / 500 + var_Y;
+		float var_Z = var_Y - b / 200f;
 
-		double tmp = Math.pow(fx, 3);
-		final double xr = tmp > XYZ.XYZ_EPSILON ? tmp : (116 * fx - 16) / XYZ.XYZ_KAPPA;
-		final double yr = lightness > XYZ.XYZ_KAPPA * XYZ.XYZ_EPSILON ? Math.pow(fy, 3) : lightness / XYZ.XYZ_KAPPA;
+		if (Math.pow(var_Y, 3) > 0.008856) {
+			var_Y = (float) Math.pow(var_Y, 3);
+		} else {
+			var_Y = (var_Y - 16 / 116f) / 7.787f;
+		}
+		if (Math.pow(var_X, 3) > 0.008856) {
+			var_X = (float) Math.pow(var_X, 3);
+		} else {
+			var_X = (var_X - 16 / 116f) / 7.787f;
+		}
+		if (Math.pow(var_Z, 3) > 0.008856) {
+			var_Z = (float) Math.pow(var_Z, 3);
+		} else {
+			var_Z = (var_Z - 16 / 116f) / 7.787f;
+		}
 
-		tmp = Math.pow(fz, 3);
-		final double zr = tmp > XYZ.XYZ_EPSILON ? tmp : (116 * fz - 16) / XYZ.XYZ_KAPPA;
+		float ref_X = 95.047f;     //Observer= 2°, Illuminant= D65
+		float ref_Y = 100.000f;
+		float ref_Z = 108.883f;
 
-		return XYZ.of(
-				xr * XYZ.XYZ_WHITE_REFERENCE_X,
-				yr * XYZ.XYZ_WHITE_REFERENCE_Y,
-				zr * XYZ.XYZ_WHITE_REFERENCE_Z
-		);
+		float X = ref_X * var_X;
+		float Y = ref_Y * var_Y;
+		float Z = ref_Z * var_Z;
+
+		return XYZ.of(X, Y, Z);
+	}
+
+	@Override
+	public CMY toCMY() {
+		return toXYZ().toCMY();
+	}
+
+	@Override
+	public HunterLAB toHunterLAB() {
+		return toXYZ().toHunterLAB();
+	}
+
+	@Override
+	public LCH toLCH() {
+		//float L = lab[0];
+		//float a = lab[1];
+		//float b = lab[2];
+
+		float var_H = (float) Math.atan2(b, a);  //Quadrant by signs //TODO check this
+
+		if (var_H > 0) {
+			var_H = (float) ((var_H / Math.PI) * 180);
+		} else {
+			var_H = (float) (360 - (Math.abs(var_H) / Math.PI) * 180);
+		}
+
+		//CIE-L* = CIE-L*;
+		float C = (float) Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2));
+		float H = var_H;
+
+		return LCH.of(L, C, H);
+	}
+
+	@Override
+	public LUV toLUV() {
+		return toXYZ().toLUV();
+	}
+
+	@Override
+	public YXY toYXY() {
+		return toXYZ().toYXY();
 	}
 }

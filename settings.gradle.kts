@@ -1,1 +1,1 @@
-rootProject.name = "colour"
+rootProject.name = "colors"

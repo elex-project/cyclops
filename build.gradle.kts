@@ -7,7 +7,7 @@ plugins {
 
 group = "com.elex-project"
 version = "1.0.0"
-description = "Colors"
+description = "Conversion between Color spaces"
 
 repositories {
 	maven {
@@ -32,7 +32,7 @@ configurations {
 }
 
 tasks.jar {
-	manifest { // todo
+	manifest {
 		attributes(mapOf(
 				"Implementation-Title" to project.name,
 				"Implementation-Version" to project.version,

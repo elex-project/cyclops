@@ -20,4 +20,14 @@ public interface Color {
 	public RGB toRGB();
 
 	public XYZ toXYZ();
+
+	public CMY toCMY();
+
+	public HunterLAB toHunterLAB();
+
+	public LCH toLCH();
+
+	public LUV toLUV();
+
+	public YXY toYXY();
 }

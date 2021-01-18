@@ -7,26 +7,30 @@
 
 package com.elex_project.cyclops;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 
 @Getter
 @Setter
 @EqualsAndHashCode
 @ToString
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class HSL implements Color {
 	private float hue, saturation, lightness;
 
-	private HSL(float hue, float saturation, float lightness) {
-		this.hue = hue;
-		this.saturation = saturation;
-		this.lightness = lightness;
-	}
-
 	public static HSL of(float hue, float saturation, float lightness) {
 		return new HSL(hue, saturation, lightness);
+	}
+
+	private static float hueToRgb(float v1, float v2, float vH) {
+		if (vH < 0) vH += 1;
+		if (vH > 1) vH -= 1;
+		if ((6 * vH) < 1)
+			return (v1 + (v2 - v1) * 6 * vH);
+		if ((2 * vH) < 1)
+			return (v2);
+		if ((3 * vH) < 2)
+			return (v1 + (v2 - v1) * ((2 / 3f) - vH) * 6);
+		return (v1);
 	}
 
 	/**
@@ -79,50 +83,57 @@ public class HSL implements Color {
 	 */
 	@Override
 	public RGB toRGB() {
-		//When 0 ≤ H < 360, 0 ≤ S ≤ 1 and 0 ≤ L ≤ 1:
-		while (hue < 0 || hue >= 360) {
-			if (hue < 0) {
-				hue += 360;
-			} else if (hue >= 360) {
-				hue -= 360;
-			}
-		}
-
-		float c = (1 - Math.abs(2 * lightness - 1)) * saturation;
-		float x = c * (1 - Math.abs((hue / 60) % 2 - 1));
-		float m = lightness - c / 2;
-
-		float r, g, b;
-		if (hue < 60) {
-			r = c;
-			g = x;
-			b = 0;
-		} else if (hue < 120) {
-			r = x;
-			g = c;
-			b = 0;
-		} else if (hue < 180) {
-			r = 0;
-			g = c;
-			b = x;
-		} else if (hue < 240) {
-			r = 0;
-			g = x;
-			b = c;
-		} else if (hue < 300) {
-			r = x;
-			g = 0;
-			b = c;
+		int R = 0;                      //RGB results from 0 to 255
+		int G = 0;
+		int B = 0;
+		if (saturation == 0) {                       //HSL from 0 to 1
+			R = Math.round(lightness * 255);                      //RGB results from 0 to 255
+			G = Math.round(lightness * 255);
+			B = Math.round(lightness * 255);
 		} else {
-			r = c;
-			g = 0;
-			b = x;
+			float var_2;
+			if (lightness < 0.5) {
+				var_2 = lightness * (1 + saturation);
+			} else {
+				var_2 = (lightness + saturation) - (saturation * lightness);
+			}
+			float var_1 = 2 * lightness - var_2;
+
+			R = Math.round(255 * hueToRgb(var_1, var_2, hue + (1 / 3f)));
+			G = Math.round(255 * hueToRgb(var_1, var_2, hue));
+			B = Math.round(255 * hueToRgb(var_1, var_2, hue - (1 / 3f)));
 		}
-		return RGB.of(Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255));
+
+		return RGB.of(R, G, B);
 	}
 
 	@Override
 	public XYZ toXYZ() {
 		return toRGB().toXYZ();
+	}
+
+	@Override
+	public CMY toCMY() {
+		return toRGB().toCMY();
+	}
+
+	@Override
+	public HunterLAB toHunterLAB() {
+		return toRGB().toHunterLAB();
+	}
+
+	@Override
+	public LCH toLCH() {
+		return toRGB().toLCH();
+	}
+
+	@Override
+	public LUV toLUV() {
+		return toRGB().toLUV();
+	}
+
+	@Override
+	public YXY toYXY() {
+		return toRGB().toYXY();
 	}
 }
