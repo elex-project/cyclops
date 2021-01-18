@@ -1,2 +1,1 @@
-rootProject.name = "tmpl-java-library"
-
+rootProject.name = "colour"
